@@ -1,4 +1,5 @@
 pub mod crusty_rustys;
+pub mod golden_retrievers;
 
 #[test]
 fn one_plus_one_is_two() {
