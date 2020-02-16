@@ -3,7 +3,7 @@ use std::error;
 use std::fmt;
 
 #[derive(Debug)]
-struct HtmlDecoderError;
+pub struct HtmlDecoderError;
 
 impl fmt::Display for HtmlDecoderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -23,7 +23,7 @@ fn one_plus_one_is_two() {
     assert_eq!(1 + 1, 2);
 }
 
-fn html_encode(raw: &str) -> String {
+pub fn html_encode(raw: &str) -> String {
     let mut s: String = String::new();
     for c in raw.chars() {
         match c {
@@ -50,7 +50,7 @@ fn html_encode(raw: &str) -> String {
     s
 }
 
-fn html_decode(html: &str) -> Result<String, HtmlDecoderError> {
+pub fn html_decode(html: &str) -> Result<String, HtmlDecoderError> {
     let mut s: String = String::new();
     for c in html.chars() {
         match c {
@@ -98,12 +98,13 @@ fn html_encode_is_special_char(c: char) -> Option<&'static str> {
     }
 }
 
-struct HtmlEncoder<C> {
+pub struct HtmlEncoder<C> {
     char_iterator: C,
     escape_chars: VecDeque<char>, //state we need to do the iterator
                                   // C is the type
 }
-struct HtmlDecoder<C> {
+
+pub struct HtmlDecoder<C> {
     char_iterator: C,
     skipped_chars: VecDeque<char>,
 }
