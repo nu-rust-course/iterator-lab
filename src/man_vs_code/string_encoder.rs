@@ -1,10 +1,10 @@
 //'static ALHPABET = &"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=";
 #[derive(PartialEq, Debug)]
-enum HtmlDecoderError {
+pub enum HtmlDecoderError {
     Nothing,
 }
 
-fn str_html_encode(raw: &str) -> String {
+pub fn str_html_encode(raw: &str) -> String {
     raw.replace(&"&", &"&amp;")
         .replace(&"<", &"&lt;")
         .replace(&">", &"&gt;")
@@ -12,7 +12,7 @@ fn str_html_encode(raw: &str) -> String {
         .replace(&"\'", &"&apos;")
 }
 
-fn str_html_decode(html: &str) -> Result<String, HtmlDecoderError> {
+pub fn str_html_decode(html: &str) -> Result<String, HtmlDecoderError> {
     Ok(html
         .replace(&"&lt;", &"<")
         .replace(&"&gt;", &">")

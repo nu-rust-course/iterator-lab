@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::collections::{HashMap, VecDeque};
 
 use lazy_static::lazy_static;
@@ -107,8 +106,8 @@ where
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(popChar) = self.escape.pop_front() {
-            Some(popChar)
+        if let Some(pop_char) = self.escape.pop_front() {
+            Some(pop_char)
         } else {
             if let Some(c) = self.raw.next() {
                 if let Some(val) = ENCODE_MAP.get(&c) {
