@@ -1,17 +1,17 @@
 use std::collections::{HashMap, VecDeque};
 
-struct HtmlEncoder<C> {
+pub struct HtmlEncoder<C> {
     iter: C,
     buffer: VecDeque<char>,
     spec_char_map: HashMap<char, String>,
 }
 
-struct HtmlDecoder<C> {
+pub struct HtmlDecoder<C> {
     iter: C,
     spec_seq_map: HashMap<String, char>,
     buffer: VecDeque<char>,
-    buf_len: usize,
-    max_seq_len: u16,
+    _buf_len: usize,
+    _max_seq_len: u16,
 }
 
 impl<C: Iterator<Item = char>> HtmlDecoder<C> {
@@ -28,9 +28,9 @@ impl<C: Iterator<Item = char>> HtmlDecoder<C> {
 
         return HtmlDecoder {
             iter: chars.into_iter(),
-            max_seq_len: 4,
+            _max_seq_len: 4,
             buffer: VecDeque::new(),
-            buf_len: 0,
+            _buf_len: 0,
             spec_seq_map,
         };
     }
