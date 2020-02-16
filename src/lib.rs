@@ -1,4 +1,5 @@
 pub mod crusty_rustys;
+pub mod go_huskies;
 pub mod golden_retrievers;
 
 #[test]
