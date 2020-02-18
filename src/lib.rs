@@ -1,3 +1,7 @@
+mod helpers;
+
+pub mod bees;
+
 pub mod crusty_rustys;
 
 pub mod go_huskies;
