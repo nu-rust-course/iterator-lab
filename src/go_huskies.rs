@@ -20,21 +20,9 @@ pub fn html_encode_1(raw: &str) -> String {
     let encoder = HtmlEncoder::new(raw.chars());
     encoder.collect::<String>()
 }
-pub fn html_decode_1(html: &str) -> Result<String, HtmlDecoderError> {
-    let decoder = HtmlDecoder::new(html.chars());
-    let mut res = vec![];
-    for v in decoder {
-        match v {
-            Ok(c) => {
-                res.push(c);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        }
-    }
 
-    Ok(String::from_iter(res.iter()))
+pub fn html_decode_1(html: &str) -> Result<String, HtmlDecoderError> {
+    HtmlDecoder::new(html.chars()).collect()
 }
 
 pub fn html_encode_2(inp: impl BufRead, mut out: impl Write) -> Result<(), io::Error> {
@@ -52,7 +40,7 @@ pub fn html_encode_2(inp: impl BufRead, mut out: impl Write) -> Result<(), io::E
         type Item = char;
 
         fn next(&mut self) -> Option<Self::Item> {
-            let mut b = vec![0u8];
+            let mut b = [0u8];
 
             match self.item.read(&mut b) {
                 Ok(n) => {
@@ -93,34 +81,21 @@ pub fn html_decode_2(inp: impl BufRead, out: impl Write) -> Result<(), HtmlDecod
 
 pub struct HtmlEncoder<C> {
     item: C,
-    encode_map: HashMap<char, &'static str>,
     pool: VecDeque<char>,
 }
+
 pub struct HtmlDecoder<C> {
     item: C,
     decode_map: HashMap<&'static str, char>,
-    is_previous_and: bool,
 }
-
 
 impl<C: Iterator<Item = char>> HtmlEncoder<C> {
     pub fn new<I>(chars: I) -> Self
-        where
-            I: IntoIterator<Item = char, IntoIter = C>,
+    where
+        I: IntoIterator<Item = char, IntoIter = C>,
     {
-        fn get_encode_map() -> HashMap<char, &'static str> {
-            let input = vec!['<', '>', '"', '\'', '&'];
-            let output = vec!["&lt;", "&gt;", "&quot;", "&apos;", "&amp;"];
-            input
-                .iter()
-                .map(|c| c.to_owned())
-                .zip(output.iter().map(|s| s.to_owned()))
-                .collect()
-        }
-
         HtmlEncoder {
             item: chars.into_iter(),
-            encode_map: get_encode_map(),
             pool: VecDeque::new(),
         }
     }
@@ -128,8 +103,8 @@ impl<C: Iterator<Item = char>> HtmlEncoder<C> {
 
 impl<C: Iterator<Item = char>> HtmlDecoder<C> {
     pub fn new<I>(chars: I) -> Self
-        where
-            I: IntoIterator<Item = char, IntoIter = C>,
+    where
+        I: IntoIterator<Item = char, IntoIter = C>,
     {
         fn get_decode_map() -> HashMap<&'static str, char> {
             let input = ['<', '>', '"', '\'', '&'];
@@ -143,46 +118,54 @@ impl<C: Iterator<Item = char>> HtmlDecoder<C> {
         HtmlDecoder {
             item: chars.into_iter(),
             decode_map: get_decode_map(),
-            is_previous_and: false,
         }
     }
 }
 
 impl<C> Iterator for HtmlEncoder<C>
-    where
-        C: Iterator<Item = char>,
+where
+    C: Iterator<Item = char>,
 {
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
+        use lazy_static::lazy_static;
+
+        lazy_static! {
+            static ref MAP: HashMap<char, &'static str> = [
+                ('<', "&lt;"),
+                ('>', "&gt;"),
+                ('\'', "&apos;"),
+                ('"', "&quot;"),
+                ('&', "&amp;")
+            ]
+            .iter()
+            .copied()
+            .collect();
+        }
+
         // pop from the pool first
         if let Some(v) = self.pool.pop_front() {
             return Some(v);
         }
 
         // if pool is empty, then read next()
-        match self.item.next() {
-            Some(c) => {
-                return match self.encode_map.get(&c) {
-                    Some(v) => {
-                        let mut iter = v.chars();
-                        let res = iter.next().unwrap();
-                        self.pool.extend(iter);
-                        Some(res)
-                    },
-                    None => {
-                        Some(c)
-                    },
-                }
-            },
-            None => None,
-        }
+        self.item.next().map(|c| {
+            if let Some(v) = MAP.get(&c) {
+                let mut iter = v.chars();
+                let res = iter.next().unwrap();
+                self.pool.extend(iter);
+                res
+            } else {
+                c
+            }
+        })
     }
 }
 
 impl<C> Iterator for HtmlDecoder<C>
-    where
-        C: Iterator<Item = char>,
+where
+    C: Iterator<Item = char>,
 {
     type Item = Result<char, HtmlDecoderError>;
 
@@ -191,45 +174,35 @@ impl<C> Iterator for HtmlDecoder<C>
             Some(Err(HtmlDecoderError::new("unrecognized char")))
         }
 
-        let mut sym: Vec<char> = Vec::new();
-        loop {
-            let next = self.item.next();
+        let mut buf: String = String::new();
 
-            if next.is_none() {
-                if self.is_previous_and {
-                    return generate_error();
-                }
-                return None;
-            }
-            let c = next.unwrap();
-
-            if self.is_previous_and {
+        while let Some(c) = self.item.next() {
+            if !buf.is_empty() {
                 // if sym.len() <= 6, it is valid
                 // TODO calculate the max length
-                if sym.len() <= 6 {
-                    sym.push(c);
-                } else {
+                if buf.len() > 6 {
                     return generate_error();
                 }
 
+                buf.push(c);
+
                 if c == ';' {
-                    let s = String::from_iter(sym.iter());
-
-                    self.is_previous_and = false;
-
-                    return match self.decode_map.get(s.as_str()) {
-                        Some(v) => {
-                            Some(Ok(*v))
-                        },
-                        None => generate_error(),
-                    }
+                    match self.decode_map.get(buf.as_str()) {
+                        Some(v) => return Some(Ok(*v)),
+                        None => return generate_error(),
+                    };
                 }
             } else if c == '&' {
-                sym = vec![c];
-                self.is_previous_and = true;
+                buf.push(c);
             } else {
                 return Some(Ok(c));
             }
+        }
+
+        if buf.is_empty() {
+            None
+        } else {
+            generate_error()
         }
     }
 }
@@ -237,8 +210,8 @@ impl<C> Iterator for HtmlDecoder<C>
 #[cfg(test)]
 mod iterator_test {
     use crate::{html_decode_1, html_encode_1, html_encode_2, HtmlDecoder};
-    use std::io::{BufReader, BufWriter};
     use std::borrow::ToOwned;
+    use std::io::{BufReader, BufWriter};
 
     #[test]
     fn html_encode_1_test() {
@@ -273,5 +246,4 @@ mod iterator_test {
         let res = String::from_utf8(s.to_owned()).unwrap();
         assert_eq!(res, output);
     }
-
 }

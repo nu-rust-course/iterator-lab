@@ -27,24 +27,12 @@ pub fn html_encode(raw: &str) -> String {
     let mut s: String = String::new();
     for c in raw.chars() {
         match c {
-            '<' => {
-                s.push_str("&lt;");
-            }
-            '>' => {
-                s.push_str("&gt;");
-            }
-            '"' => {
-                s.push_str("&quo;");
-            }
-            '\'' => {
-                s.push_str("&apos;");
-            }
-            '&' => {
-                s.push_str("&amp;");
-            }
-            _ => {
-                s.push(c);
-            }
+            '<' => s.push_str("&lt;"),
+            '>' => s.push_str("&gt;"),
+            '"' => s.push_str("&quo;"),
+            '\'' => s.push_str("&apos;"),
+            '&' => s.push_str("&amp;"),
+            _ => s.push(c),
         }
     }
     s
@@ -52,28 +40,7 @@ pub fn html_encode(raw: &str) -> String {
 
 pub fn html_decode(html: &str) -> Result<String, HtmlDecoderError> {
     let mut s: String = String::new();
-    for c in html.chars() {
-        match c {
-            '<' => {
-                s.push_str("&lt;");
-            }
-            '>' => {
-                s.push_str("&gt;");
-            }
-            '"' => {
-                s.push_str("&quo;");
-            }
-            '\'' => {
-                s.push_str("&apos;");
-            }
-            '&' => {
-                s.push_str("&amp;");
-            }
-            _ => {
-                s.push(c);
-            }
-        }
-    }
+    todo!();
     Ok(s)
 }
 
@@ -141,14 +108,15 @@ where
     type Item = char;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(c) = self.escape_chars.pop_front() {
-            return Some(c);
+            Some(c)
         } else {
             let next_char = self.char_iterator.next()?;
             if let Some(s) = html_encode_is_special_char(next_char) {
                 self.escape_chars.extend(s.chars());
-                return Some('&');
+                Some('&')
+            } else {
+                Some(next_char)
             }
-            return Some(next_char);
         }
     }
 }
@@ -160,11 +128,11 @@ where
     type Item = Result<char, HtmlDecoderError>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(c) = self.skipped_chars.pop_front() {
-            return Some(Ok(c));
+            Some(Ok(c))
         } else {
             let next_char = self.char_iterator.next()?;
             if next_char == '&' {}
-            return Some(Ok(next_char));
+            Some(Ok(next_char))
         }
     }
 }
